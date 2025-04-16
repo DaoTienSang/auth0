@@ -6,11 +6,13 @@ from django.db.models import Q
 from django.utils import timezone
 from .models import Portfolio, Asset, Transaction, PortfolioAsset
 from .forms import PortfolioForm, AssetForm, TransactionForm, UserRegistrationForm
-from django.contrib.auth import login
+from django.contrib.auth import login, logout as auth_logout
 from decimal import Decimal
-from django.http import JsonResponse
+from django.http import JsonResponse, HttpResponseRedirect
 from .vnstock_services import get_price_board, get_historical_data
 import json
+from django.conf import settings
+from urllib.parse import urlencode
 
 # Import các view cho ví điện tử
 from .views_wallet import (
@@ -357,3 +359,17 @@ def get_stock_historical_data(request, symbol):
         print(f"Error getting data for {symbol}: {str(e)}") # Debug log
         print(f"Data structure: {historical_data.head()}") if 'historical_data' in locals() else print("No data fetched") # Debug log để xem cấu trúc dữ liệu
         return JsonResponse({'error': str(e)}, status=500)
+
+def logout(request):
+    """Handles both Django and Auth0 logout"""
+    # Logout from Django
+    auth_logout(request)
+    
+    # Construct Auth0 logout URL
+    params = {
+        'client_id': settings.AUTH0_CLIENT_ID,
+        'returnTo': settings.AUTH0_RETURN_TO_URL
+    }
+    auth0_logout_url = f'{settings.AUTH0_LOGOUT_URL}?{urlencode(params)}'
+    
+    return HttpResponseRedirect(auth0_logout_url)
