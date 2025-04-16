@@ -312,7 +312,8 @@ def register(request):
         form = UserRegistrationForm(request.POST)
         if form.is_valid():
             user = form.save()
-            login(request, user)
+            # Specify the authentication backend when logging in
+            login(request, user, backend='django.contrib.auth.backends.ModelBackend')
             messages.success(request, 'Đăng ký thành công!')
             return redirect('dashboard')
     else:
