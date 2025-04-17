@@ -5,94 +5,240 @@
 {% block content %}
 <div class="container py-5">
     <div class="row justify-content-center">
-        <div class="col-lg-8">
-            <!-- Sample Questions -->
-            <div class="sample-questions mb-4" data-aos="fade-up">
-                <h5 class="mb-3">Câu hỏi mẫu:</h5>
-                <div class="d-flex flex-wrap gap-2">
-                    {% for question in sample_questions %}
-                        <button type="button" class="btn btn-outline-primary btn-sm sample-question" data-question="{{ question.question_text }}">
-                            {{ question.question_text }}
-                        </button>
-                    {% endfor %}
-                </div>
+        <div class="col-lg-10">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h3 class="fw-bold text-primary mb-0" data-aos="fade-right">Trợ lý AI Đầu tư</h3>
+                <button id="clear-history" class="btn btn-sm btn-outline-danger" data-aos="fade-left">
+                    <i class="fas fa-trash-alt me-1"></i> Xóa lịch sử
+                </button>
             </div>
 
-            <!-- Chat Container -->
-            <div class="card border-0 shadow-sm rounded-4" data-aos="fade-up">
-                <div class="card-body p-4">
-                    <div id="chat-messages" class="chat-messages mb-4" style="height: 400px; overflow-y: auto;">
-                        <div class="welcome-message text-center py-4">
-                            <i class="fas fa-robot fa-3x text-primary mb-3"></i>
-                            <h5>Xin chào! Tôi có thể giúp gì cho bạn?</h5>
-                            <p class="text-muted">Hãy chọn một câu hỏi mẫu hoặc đặt câu hỏi của riêng bạn</p>
+            <div class="row">
+                <!-- Left Column: Chat Container -->
+                <div class="col-lg-8 mb-4 mb-lg-0">
+                    <div class="card border-0 shadow-sm rounded-4" data-aos="fade-up">
+                        <div class="card-header bg-white border-0 p-4">
+                            <div class="d-flex align-items-center">
+                                <div class="avatar-container bg-primary-light rounded-circle p-2 me-3">
+                                    <i class="fas fa-robot text-primary"></i>
+                                </div>
+                                <div>
+                                    <h5 class="mb-0">Trợ lý AI</h5>
+                                    <small class="text-muted">Đang hoạt động</small>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="card-body p-0">
+                            <div id="chat-messages" class="chat-messages p-4" style="height: 450px; overflow-y: auto;">
+                                <div class="welcome-message text-center py-5">
+                                    <div class="avatar-container bg-primary-light rounded-circle p-3 mb-3 mx-auto">
+                                        <i class="fas fa-robot fa-2x text-primary"></i>
+                                    </div>
+                                    <h5>Xin chào! Tôi có thể giúp gì cho bạn?</h5>
+                                    <p class="text-muted">Hãy chọn một câu hỏi mẫu hoặc đặt câu hỏi của riêng bạn</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="card-footer bg-white border-0 p-3">
+                            <form id="chat-form" class="chat-input">
+                                {% csrf_token %}
+                                <div class="input-group">
+                                    <input type="text" id="user-input" class="form-control border-end-0" 
+                                           placeholder="Nhập câu hỏi của bạn..." required>
+                                    <button class="btn btn-primary" type="submit" id="send-button">
+                                        <i class="fas fa-paper-plane"></i>
+                                    </button>
+                                </div>
+                            </form>
                         </div>
                     </div>
-
-                    <form id="chat-form" class="chat-input">
-                        {% csrf_token %}
-                        <div class="input-group">
-                            <input type="text" id="user-input" class="form-control" placeholder="Nhập câu hỏi của bạn..." required>
-                            <button class="btn btn-primary" type="submit" id="send-button">
-                                <i class="fas fa-paper-plane"></i>
-                            </button>
+                </div>
+                
+                <!-- Right Column: Sample Questions -->
+                <div class="col-lg-4">
+                    <div class="card border-0 shadow-sm rounded-4" data-aos="fade-up" data-aos-delay="200">
+                        <div class="card-header bg-white border-0 p-4">
+                            <h5 class="mb-0">Câu hỏi gợi ý</h5>
                         </div>
-                    </form>
+                        <div class="card-body p-3">
+                            <div class="sample-questions">
+                                <div class="d-flex flex-column gap-2">
+                                    {% for question in sample_questions %}
+                                        <button type="button" class="btn btn-outline-primary btn-sm text-start sample-question p-3" 
+                                                data-question="{{ question.question_text }}">
+                                            {{ question.question_text }}
+                                        </button>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
 </div>
 
+<!-- Add Marked.js for Markdown support -->
+<script src="https://cdn.jsdelivr.net/npm/marked@4.3.0/marked.min.js"></script>
+<!-- Add DOMPurify for sanitizing HTML -->
+<script src="https://cdn.jsdelivr.net/npm/dompurify@3.0.1/dist/purify.min.js"></script>
+
 <style>
+:root {
+    --primary-color: #4f46e5;
+    --primary-light: #eef2ff;
+    --chat-user-bg: #eef2ff;
+    --chat-bot-bg: #f8fafc;
+    --chat-time: #94a3b8;
+    --border-radius: 1rem;
+}
+
+.avatar-container {
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
 .chat-messages {
     scroll-behavior: smooth;
+    background-color: #fafafa;
+    background-image: url("data:image/svg+xml,%3Csvg width='100' height='100' viewBox='0 0 100 100' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M11 18c3.866 0 7-3.134 7-7s-3.134-7-7-7-7 3.134-7 7 3.134 7 7 7zm48 25c3.866 0 7-3.134 7-7s-3.134-7-7-7-7 3.134-7 7 3.134 7 7 7zm-43-7c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zm63 31c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zM34 90c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zm56-76c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zM12 86c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm28-65c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm23-11c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zm-6 60c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm29 22c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zM32 63c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zm57-13c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zm-9-21c1.105 0 2-.895 2-2s-.895-2-2-2-2 .895-2 2 .895 2 2 2zM60 91c1.105 0 2-.895 2-2s-.895-2-2-2-2 .895-2 2 .895 2 2 2zM35 41c1.105 0 2-.895 2-2s-.895-2-2-2-2 .895-2 2 .895 2 2 2zM12 60c1.105 0 2-.895 2-2s-.895-2-2-2-2 .895-2 2 .895 2 2 2z' fill='%23e2e8f0' fill-opacity='0.4' fill-rule='evenodd'/%3E%3C/svg%3E");
+}
+
+.message-container {
+    display: flex;
+    flex-direction: column;
+    margin-bottom: 1.5rem;
+    max-width: 85%;
+    position: relative;
+}
+
+.message-container.user {
+    margin-left: auto;
+    align-items: flex-end;
+}
+
+.message-container.bot {
+    margin-right: auto;
+    align-items: flex-start;
 }
 
 .message {
-    margin-bottom: 1rem;
     padding: 1rem;
-    border-radius: 1rem;
-    max-width: 80%;
-    white-space: pre-wrap;
+    border-radius: var(--border-radius);
+    position: relative;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.05);
 }
 
 .message.user {
-    background-color: var(--primary-light);
-    margin-left: auto;
+    background-color: var(--chat-user-bg);
     border-bottom-right-radius: 0.3rem;
+    color: #1e293b;
 }
 
 .message.bot {
-    background-color: #f8f9fa;
-    margin-right: auto;
+    background-color: var(--chat-bot-bg);
     border-bottom-left-radius: 0.3rem;
 }
 
 .message.error {
     background-color: #fee2e2;
     color: #991b1b;
-    margin-right: auto;
     border-bottom-left-radius: 0.3rem;
 }
 
+.message-time {
+    font-size: 0.75rem;
+    color: var(--chat-time);
+    margin-top: 0.25rem;
+}
+
+/* Markdown styling */
+.message.bot p {
+    margin-bottom: 0.75rem;
+}
+
+.message.bot p:last-child {
+    margin-bottom: 0;
+}
+
+.message.bot a {
+    color: var(--primary-color);
+    text-decoration: underline;
+}
+
+.message.bot ul, .message.bot ol {
+    margin-top: 0.5rem;
+    margin-bottom: 0.5rem;
+    padding-left: 1.5rem;
+}
+
+.message.bot li {
+    margin-bottom: 0.25rem;
+}
+
+.message.bot pre {
+    background-color: #f1f5f9;
+    padding: 0.75rem;
+    border-radius: 0.5rem;
+    overflow-x: auto;
+    margin: 0.75rem 0;
+}
+
+.message.bot code {
+    background-color: #f1f5f9;
+    padding: 0.2rem 0.4rem;
+    border-radius: 0.2rem;
+    font-size: 0.9em;
+    font-family: monospace;
+}
+
+.message.bot pre code {
+    background-color: transparent;
+    padding: 0;
+}
+
+.message.bot blockquote {
+    border-left: 4px solid #e2e8f0;
+    padding-left: 1rem;
+    margin-left: 0;
+    color: #64748b;
+}
+
+.message.bot h1, .message.bot h2, .message.bot h3, .message.bot h4 {
+    margin-top: 1rem;
+    margin-bottom: 0.5rem;
+    font-weight: 600;
+}
+
 .sample-question {
-    white-space: nowrap;
+    white-space: normal;
+    text-align: left;
     overflow: hidden;
     text-overflow: ellipsis;
-    max-width: 300px;
+    transition: all 0.2s ease;
+    border-radius: 0.5rem;
+}
+
+.sample-question:hover {
+    background-color: var(--primary-light);
 }
 
 /* Loading animation */
 .typing-indicator {
-    background-color: #f8f9fa;
+    background-color: var(--chat-bot-bg);
     padding: 1rem;
-    border-radius: 1rem;
+    border-radius: var(--border-radius);
     margin-bottom: 1rem;
     margin-right: auto;
     border-bottom-left-radius: 0.3rem;
     display: flex;
     align-items: center;
+    max-width: 5rem;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.05);
 }
 
 .typing-indicator span {
@@ -103,6 +249,7 @@
     display: inline-block;
     margin-right: 5px;
     animation: bounce 1.3s linear infinite;
+    opacity: 0.7;
 }
 
 .typing-indicator span:nth-child(2) { animation-delay: 0.15s; }
@@ -111,6 +258,22 @@
 @keyframes bounce {
     0%, 60%, 100% { transform: translateY(0); }
     30% { transform: translateY(-4px); }
+}
+
+.welcome-message .avatar-container {
+    width: 60px;
+    height: 60px;
+}
+
+#user-input:focus {
+    box-shadow: none;
+    border-color: #d1d5db;
+}
+
+@media (max-width: 992px) {
+    .message-container {
+        max-width: 90%;
+    }
 }
 </style>
 
@@ -121,16 +284,115 @@ document.addEventListener('DOMContentLoaded', function() {
     const userInput = document.getElementById('user-input');
     const sampleQuestions = document.querySelectorAll('.sample-question');
     const sendButton = document.getElementById('send-button');
+    const clearHistoryBtn = document.getElementById('clear-history');
     const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+    
+    // Session ID for this chat
+    let sessionId = localStorage.getItem('chatSessionId');
+    if (!sessionId) {
+        sessionId = 'session_' + Date.now();
+        localStorage.setItem('chatSessionId', sessionId);
+    }
+    
+    // Configure marked for safe rendering
+    marked.setOptions({
+        breaks: true,      // Add line breaks as <br>
+        gfm: true,         // Use GitHub Flavored Markdown
+        sanitize: false    // We'll handle sanitization with DOMPurify
+    });
 
-    function addMessage(message, type = 'bot') {
-        const messageDiv = document.createElement('div');
-        messageDiv.className = `message ${type}`;
-        messageDiv.textContent = message;
-        chatMessages.appendChild(messageDiv);
+    // Load chat history from localStorage
+    function loadChatHistory() {
+        const welcomeMessage = document.querySelector('.welcome-message');
+        if (welcomeMessage) {
+            welcomeMessage.style.display = 'none';
+        }
+        
+        const chatHistory = JSON.parse(localStorage.getItem(sessionId) || '[]');
+        if (chatHistory.length === 0) {
+            if (welcomeMessage) {
+                welcomeMessage.style.display = 'block';
+            }
+            return;
+        }
+        
+        chatMessages.innerHTML = '';  // Clear existing messages
+        chatHistory.forEach(item => {
+            addMessageToUI(item.message, item.type, item.timestamp, false);
+        });
+        
+        // Scroll to bottom after loading history
         chatMessages.scrollTop = chatMessages.scrollHeight;
     }
-
+    
+    // Save message to localStorage
+    function saveMessage(message, type) {
+        const timestamp = new Date().toISOString();
+        const chatHistory = JSON.parse(localStorage.getItem(sessionId) || '[]');
+        chatHistory.push({ message, type, timestamp });
+        localStorage.setItem(sessionId, JSON.stringify(chatHistory));
+        return timestamp;
+    }
+    
+    // Format timestamp
+    function formatTime(timestamp) {
+        const date = new Date(timestamp);
+        return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    }
+    
+    // Add message to UI with proper formatting
+    function addMessageToUI(message, type = 'bot', timestamp = null, save = true) {
+        // Hide welcome message if visible
+        const welcomeMessage = document.querySelector('.welcome-message');
+        if (welcomeMessage) {
+            welcomeMessage.style.display = 'none';
+        }
+        
+        // Create container for the message
+        const messageContainer = document.createElement('div');
+        messageContainer.className = `message-container ${type}`;
+        
+        // Create the actual message element
+        const messageDiv = document.createElement('div');
+        messageDiv.className = `message ${type}`;
+        
+        // Save to localStorage if needed
+        if (save) {
+            timestamp = saveMessage(message, type);
+        }
+        
+        // Format the message content based on type
+        if (type === 'bot') {
+            try {
+                // Parse markdown and sanitize HTML
+                const parsedMessage = marked.parse(message);
+                const sanitizedHtml = DOMPurify.sanitize(parsedMessage);
+                messageDiv.innerHTML = sanitizedHtml;
+            } catch (error) {
+                console.error('Markdown parsing error:', error);
+                messageDiv.textContent = message; // Fallback to plain text
+            }
+        } else {
+            // For user and error messages, use textContent for security
+            messageDiv.textContent = message;
+        }
+        
+        // Add the message to its container
+        messageContainer.appendChild(messageDiv);
+        
+        // Add timestamp if available
+        if (timestamp) {
+            const timeElement = document.createElement('div');
+            timeElement.className = 'message-time';
+            timeElement.textContent = formatTime(timestamp);
+            messageContainer.appendChild(timeElement);
+        }
+        
+        // Add to chat
+        chatMessages.appendChild(messageContainer);
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+    }
+    
     function showTypingIndicator() {
         const indicator = document.createElement('div');
         indicator.className = 'typing-indicator';
@@ -153,7 +415,7 @@ document.addEventListener('DOMContentLoaded', function() {
         sendButton.disabled = true;
 
         // Add user's question to chat
-        addMessage(question, 'user');
+        addMessageToUI(question, 'user');
         
         // Clear input if it's from the form submission
         if (sourceEvent && sourceEvent.target.id === 'chat-form') {
@@ -180,9 +442,9 @@ document.addEventListener('DOMContentLoaded', function() {
 
             if (response.ok) {
                 if (data.answer) {
-                    addMessage(data.answer);
+                    addMessageToUI(data.answer);
                 } else {
-                    addMessage('Xin lỗi, tôi không thể tìm được câu trả lời phù hợp.', 'error');
+                    addMessageToUI('Xin lỗi, tôi không thể tìm được câu trả lời phù hợp.', 'error');
                 }
             } else {
                 throw new Error(data.error || 'Có lỗi xảy ra khi xử lý câu hỏi');
@@ -190,7 +452,7 @@ document.addEventListener('DOMContentLoaded', function() {
         } catch (error) {
             console.error('Error:', error);
             removeTypingIndicator();
-            addMessage(error.message || 'Xin lỗi, đã có lỗi xảy ra. Vui lòng thử lại sau.', 'error');
+            addMessageToUI(error.message || 'Xin lỗi, đã có lỗi xảy ra. Vui lòng thử lại sau.', 'error');
         } finally {
             // Re-enable input and button
             userInput.disabled = false;
@@ -198,6 +460,26 @@ document.addEventListener('DOMContentLoaded', function() {
             userInput.focus();
         }
     }
+    
+    // Clear chat history
+    clearHistoryBtn.addEventListener('click', function() {
+        if (confirm('Bạn có chắc chắn muốn xóa toàn bộ lịch sử trò chuyện?')) {
+            localStorage.removeItem(sessionId);
+            chatMessages.innerHTML = '';
+            
+            // Re-add welcome message
+            const welcomeDiv = document.createElement('div');
+            welcomeDiv.className = 'welcome-message text-center py-5';
+            welcomeDiv.innerHTML = `
+                <div class="avatar-container bg-primary-light rounded-circle p-3 mb-3 mx-auto">
+                    <i class="fas fa-robot fa-2x text-primary"></i>
+                </div>
+                <h5>Xin chào! Tôi có thể giúp gì cho bạn?</h5>
+                <p class="text-muted">Hãy chọn một câu hỏi mẫu hoặc đặt câu hỏi của riêng bạn</p>
+            `;
+            chatMessages.appendChild(welcomeDiv);
+        }
+    });
 
     // Handle sample question clicks
     sampleQuestions.forEach(button => {
@@ -215,6 +497,9 @@ document.addEventListener('DOMContentLoaded', function() {
             handleQuestion(question, event);
         }
     });
+    
+    // Load chat history on page load
+    loadChatHistory();
 });
 </script>
 {% endblock %}
