@@ -36,4 +36,8 @@ urlpatterns = [
     path('wallet/bank-accounts/<int:pk>/update/', views.update_bank_account, name='update_bank_account'),
     path('wallet/bank-accounts/<int:pk>/delete/', views.delete_bank_account, name='delete_bank_account'),
     path('wallet/bank-accounts/<int:pk>/set-default/', views.set_default_bank_account, name='set_default_bank_account'),
+
+    # Chatbot URLs
+    path('chatbot/', views.chatbot_view, name='chatbot'),
+    path('api/chatbot/', views.chatbot_api, name='chatbot_api'),
 ]

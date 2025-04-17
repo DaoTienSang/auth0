@@ -4,7 +4,7 @@ from django.contrib import messages
 from django.core.paginator import Paginator
 from django.db.models import Q
 from django.utils import timezone
-from .models import Portfolio, Asset, Transaction, PortfolioAsset
+from .models import Portfolio, Asset, Transaction, PortfolioAsset, ChatbotQuestion
 from .forms import PortfolioForm, AssetForm, TransactionForm, UserRegistrationForm
 from django.contrib.auth import login, logout as auth_logout
 from decimal import Decimal
@@ -13,6 +13,8 @@ from .vnstock_services import get_price_board, get_historical_data
 import json
 from django.conf import settings
 from urllib.parse import urlencode
+from django.views.decorators.csrf import csrf_exempt
+import requests
 
 # Import các view cho ví điện tử
 from .views_wallet import (
@@ -374,3 +376,74 @@ def logout(request):
     auth0_logout_url = f'{settings.AUTH0_LOGOUT_URL}?{urlencode(params)}'
     
     return HttpResponseRedirect(auth0_logout_url)
+
+# ============ CHATBOT =======
+@login_required
+def chatbot_view(request):
+    sample_questions = ChatbotQuestion.objects.all()
+    return render(request, 'portfolio/chatbot.html', {
+        'sample_questions': sample_questions
+    })
+
+@csrf_exempt
+def chatbot_api(request):
+    if request.method == 'POST':
+        try:
+            data = json.loads(request.body)
+            question = data.get('question')
+            
+            url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=AIzaSyDSloOlYxqRmSMbx2QNmRaR6KbniImzeYE"
+            headers = {
+                "Content-Type": "application/json"
+            }
+            payload = {
+                "contents": [{
+                    "role": "user",
+                    "parts": [{
+                        "text": f"Bạn là một trợ lý AI giúp người dùng về lĩnh vực đầu tư và chứng khoán. Hãy trả lời câu hỏi sau một cách chuyên nghiệp và chi tiết bằng tiếng Việt: {question}"
+                    }]
+                }],
+                "generationConfig": {
+                    "temperature": 0.7,
+                    "topK": 40,
+                    "topP": 0.95,
+                    "maxOutputTokens": 2048
+                }
+            }
+            
+            print("Sending request to Gemini API:", json.dumps(payload, indent=2, ensure_ascii=False))
+            response = requests.post(url, headers=headers, json=payload)
+            print("Gemini API status code:", response.status_code)
+            
+            gemini_response = response.json()
+            print("Gemini API response:", json.dumps(gemini_response, indent=2, ensure_ascii=False))
+            
+            if response.status_code == 400:
+                error_message = gemini_response.get('error', {}).get('message', 'Unknown error')
+                if 'API key not valid' in error_message:
+                    raise Exception('Invalid API key. Please check your Gemini API key configuration.')
+                if 'model not found' in error_message.lower():
+                    # Try with gemini-pro model if 2.0-flash is not available
+                    url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=AIzaSyDSloOlYxqRmSMbx2QNmRaR6KbniImzeYE"
+                    response = requests.post(url, headers=headers, json=payload)
+                    gemini_response = response.json()
+                else:
+                    raise Exception(f"Gemini API error: {error_message}")
+            
+            if response.status_code == 200 and 'candidates' in gemini_response:
+                text = gemini_response['candidates'][0]['content']['parts'][0]['text']
+                return JsonResponse({'answer': text})
+            
+            raise Exception("Invalid or empty response from Gemini API")
+            
+        except json.JSONDecodeError as e:
+            print("JSON Decode Error:", str(e))
+            return JsonResponse({'error': 'Invalid request format'}, status=400)
+        except requests.RequestException as e:
+            print("Request Error:", str(e))
+            return JsonResponse({'error': 'Error connecting to Gemini API'}, status=500)
+        except Exception as e:
+            print("Error in chatbot_api:", str(e))
+            return JsonResponse({'error': str(e)}, status=500)
+    
+    return JsonResponse({'error': 'Method not allowed'}, status=405)

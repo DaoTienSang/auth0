@@ -304,3 +304,15 @@ class WalletTransaction(models.Model):
             self.wallet.save()
             
         super().save(*args, **kwargs)
+
+class ChatbotQuestion(models.Model):
+    question_text = models.TextField(null=False, blank=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['created_at']
+        db_table = 'chatbot_questions'
+
+    def __str__(self):
+        return self.question_text[:50]

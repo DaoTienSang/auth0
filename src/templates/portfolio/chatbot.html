@@ -1,0 +1,220 @@
+{% extends 'portfolio/base.html' %}
+
+{% block title %}Trợ lý AI | {{ block.super }}{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <!-- Sample Questions -->
+            <div class="sample-questions mb-4" data-aos="fade-up">
+                <h5 class="mb-3">Câu hỏi mẫu:</h5>
+                <div class="d-flex flex-wrap gap-2">
+                    {% for question in sample_questions %}
+                        <button type="button" class="btn btn-outline-primary btn-sm sample-question" data-question="{{ question.question_text }}">
+                            {{ question.question_text }}
+                        </button>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <!-- Chat Container -->
+            <div class="card border-0 shadow-sm rounded-4" data-aos="fade-up">
+                <div class="card-body p-4">
+                    <div id="chat-messages" class="chat-messages mb-4" style="height: 400px; overflow-y: auto;">
+                        <div class="welcome-message text-center py-4">
+                            <i class="fas fa-robot fa-3x text-primary mb-3"></i>
+                            <h5>Xin chào! Tôi có thể giúp gì cho bạn?</h5>
+                            <p class="text-muted">Hãy chọn một câu hỏi mẫu hoặc đặt câu hỏi của riêng bạn</p>
+                        </div>
+                    </div>
+
+                    <form id="chat-form" class="chat-input">
+                        {% csrf_token %}
+                        <div class="input-group">
+                            <input type="text" id="user-input" class="form-control" placeholder="Nhập câu hỏi của bạn..." required>
+                            <button class="btn btn-primary" type="submit" id="send-button">
+                                <i class="fas fa-paper-plane"></i>
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.chat-messages {
+    scroll-behavior: smooth;
+}
+
+.message {
+    margin-bottom: 1rem;
+    padding: 1rem;
+    border-radius: 1rem;
+    max-width: 80%;
+    white-space: pre-wrap;
+}
+
+.message.user {
+    background-color: var(--primary-light);
+    margin-left: auto;
+    border-bottom-right-radius: 0.3rem;
+}
+
+.message.bot {
+    background-color: #f8f9fa;
+    margin-right: auto;
+    border-bottom-left-radius: 0.3rem;
+}
+
+.message.error {
+    background-color: #fee2e2;
+    color: #991b1b;
+    margin-right: auto;
+    border-bottom-left-radius: 0.3rem;
+}
+
+.sample-question {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 300px;
+}
+
+/* Loading animation */
+.typing-indicator {
+    background-color: #f8f9fa;
+    padding: 1rem;
+    border-radius: 1rem;
+    margin-bottom: 1rem;
+    margin-right: auto;
+    border-bottom-left-radius: 0.3rem;
+    display: flex;
+    align-items: center;
+}
+
+.typing-indicator span {
+    height: 8px;
+    width: 8px;
+    background-color: var(--primary-color);
+    border-radius: 50%;
+    display: inline-block;
+    margin-right: 5px;
+    animation: bounce 1.3s linear infinite;
+}
+
+.typing-indicator span:nth-child(2) { animation-delay: 0.15s; }
+.typing-indicator span:nth-child(3) { animation-delay: 0.3s; }
+
+@keyframes bounce {
+    0%, 60%, 100% { transform: translateY(0); }
+    30% { transform: translateY(-4px); }
+}
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const chatMessages = document.getElementById('chat-messages');
+    const chatForm = document.getElementById('chat-form');
+    const userInput = document.getElementById('user-input');
+    const sampleQuestions = document.querySelectorAll('.sample-question');
+    const sendButton = document.getElementById('send-button');
+    const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+
+    function addMessage(message, type = 'bot') {
+        const messageDiv = document.createElement('div');
+        messageDiv.className = `message ${type}`;
+        messageDiv.textContent = message;
+        chatMessages.appendChild(messageDiv);
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+    }
+
+    function showTypingIndicator() {
+        const indicator = document.createElement('div');
+        indicator.className = 'typing-indicator';
+        indicator.innerHTML = '<span></span><span></span><span></span>';
+        indicator.id = 'typing-indicator';
+        chatMessages.appendChild(indicator);
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+    }
+
+    function removeTypingIndicator() {
+        const indicator = document.getElementById('typing-indicator');
+        if (indicator) {
+            indicator.remove();
+        }
+    }
+
+    async function handleQuestion(question, sourceEvent) {
+        // Disable input and button while processing
+        userInput.disabled = true;
+        sendButton.disabled = true;
+
+        // Add user's question to chat
+        addMessage(question, 'user');
+        
+        // Clear input if it's from the form submission
+        if (sourceEvent && sourceEvent.target.id === 'chat-form') {
+            userInput.value = '';
+        }
+
+        // Show typing indicator
+        showTypingIndicator();
+
+        try {
+            const response = await fetch('/api/chatbot/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': csrfToken
+                },
+                body: JSON.stringify({ question: question })
+            });
+
+            const data = await response.json();
+
+            // Remove typing indicator
+            removeTypingIndicator();
+
+            if (response.ok) {
+                if (data.answer) {
+                    addMessage(data.answer);
+                } else {
+                    addMessage('Xin lỗi, tôi không thể tìm được câu trả lời phù hợp.', 'error');
+                }
+            } else {
+                throw new Error(data.error || 'Có lỗi xảy ra khi xử lý câu hỏi');
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            removeTypingIndicator();
+            addMessage(error.message || 'Xin lỗi, đã có lỗi xảy ra. Vui lòng thử lại sau.', 'error');
+        } finally {
+            // Re-enable input and button
+            userInput.disabled = false;
+            sendButton.disabled = false;
+            userInput.focus();
+        }
+    }
+
+    // Handle sample question clicks
+    sampleQuestions.forEach(button => {
+        button.addEventListener('click', function(event) {
+            const question = this.getAttribute('data-question');
+            handleQuestion(question, event);
+        });
+    });
+
+    // Handle form submission
+    chatForm.addEventListener('submit', function(event) {
+        event.preventDefault();
+        const question = userInput.value.trim();
+        if (question) {
+            handleQuestion(question, event);
+        }
+    });
+});
+</script>
+{% endblock %}
