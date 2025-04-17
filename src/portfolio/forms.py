@@ -6,11 +6,17 @@ from django.core.validators import MinValueValidator
 from decimal import Decimal
 
 class UserRegistrationForm(UserCreationForm):
-    email = forms.EmailField()
+    email = forms.EmailField(required=True)
     
     class Meta:
         model = User
         fields = ['username', 'email', 'password1', 'password2']
+        
+    def clean_email(self):
+        email = self.cleaned_data.get('email')
+        if User.objects.filter(email=email).exists():
+            raise forms.ValidationError("Email đã được sử dụng. Vui lòng sử dụng email khác.")
+        return email
 
 class PortfolioForm(forms.ModelForm):
     class Meta:

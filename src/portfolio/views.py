@@ -4,7 +4,7 @@ from django.contrib import messages
 from django.core.paginator import Paginator
 from django.db.models import Q
 from django.utils import timezone
-from .models import Portfolio, Asset, Transaction, PortfolioAsset, ChatbotQuestion
+from .models import Portfolio, Asset, Transaction, PortfolioAsset, ChatbotQuestion, Wallet
 from .forms import PortfolioForm, AssetForm, TransactionForm, UserRegistrationForm
 from django.contrib.auth import login, logout as auth_logout
 from decimal import Decimal
@@ -313,11 +313,25 @@ def register(request):
     if request.method == 'POST':
         form = UserRegistrationForm(request.POST)
         if form.is_valid():
-            user = form.save()
-            # Specify the authentication backend when logging in
-            login(request, user, backend='django.contrib.auth.backends.ModelBackend')
-            messages.success(request, 'Đăng ký thành công!')
-            return redirect('dashboard')
+            try:
+                user = form.save(commit=False)
+                user.is_active = True  # Ensure user is active
+                user.save()
+                
+                # Log the user in using the ModelBackend
+                login(request, user, backend='django.contrib.auth.backends.ModelBackend')
+                
+                # Create initial wallet for the user
+                Wallet.objects.get_or_create(user=user)
+                
+                messages.success(request, 'Đăng ký thành công! Chào mừng bạn đến với hệ thống.')
+                return redirect('dashboard')
+            except Exception as e:
+                messages.error(request, f'Đã xảy ra lỗi khi đăng ký: {str(e)}')
+        else:
+            for field in form.errors:
+                for error in form.errors[field]:
+                    messages.error(request, f'{error}')
     else:
         form = UserRegistrationForm()
     return render(request, 'portfolio/register.html', {'form': form})
